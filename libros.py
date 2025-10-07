@@ -2,8 +2,7 @@ import streamlit as st
 import requests
 import pandas as pd
 
-st.set_page_config(page_title=" Buscador de Autores", page_icon="", layout="wide")
-
+st.set_page_config(page_title="Buscador de Autores", page_icon="", layout="wide")
 
 st.markdown("""
 <style>
@@ -141,19 +140,20 @@ def buscar_autor_open_library(titulo_libro):
         return {"encontrado": False, "error": str(e)}
 
 
-st.markdown('<h1 class="main-header"> Buscador de Autores de Libros</h1>', unsafe_allow_html=True)
+st.markdown('<h1 class="main-header">Buscador de Autores de Libros</h1>', unsafe_allow_html=True)
 st.markdown("### Encuentra el autor de cualquier libro con solo el título")
-# Sidebar
+
+
 with st.sidebar:
-    st.header("⚙ Configuración")
+    st.header("Configuracion")
     fuente_busqueda = st.radio(
-        "Fuente de búsqueda:",
-        ["Automática (Recomendada)", "Solo base local", "Solo Google Books", "Solo Open Library"]
+        "Fuente de busqueda:",
+        ["Automatica (Recomendada)", "Solo base local", "Solo Google Books", "Solo Open Library"]
     )
     
     st.markdown("---")
-    st.header(" Libros en Base Local")
-    st.write(f"{len(LIBROS_BD)}** libros populares disponibles")
+    st.header("Libros en Base Local")
+    st.write(f"{len(LIBROS_BD)} libros populares disponibles")
     
     if st.checkbox("Ver lista completa"):
         st.dataframe(
@@ -162,53 +162,56 @@ with st.sidebar:
         )
 
 
+if 'busqueda_actual' not in st.session_state:
+    st.session_state.busqueda_actual = ""
+if 'historial' not in st.session_state:
+    st.session_state.historial = []
+
 col1, col2 = st.columns([3, 1])
 
 with col1:
     titulo_libro = st.text_input(
-        " Escribe el título del libro:",
+        "Escribe el titulo del libro:",
         placeholder="Ej: Cien años de soledad, 1984, El principito...",
-        key="busqueda_principal"
+        value=st.session_state.busqueda_actual,
+        key="busqueda_input"
     )
 
 with col2:
     st.write("")  
     st.write("")
-    buscar_clicked = st.button(" Buscar Autor", type="primary")
+    buscar_clicked = st.button("Buscar Autor", type="primary")
 
 
-if 'historial' not in st.session_state:
-    st.session_state.historial = []
+busqueda_a_realizar = titulo_libro
 
-
-if buscar_clicked and titulo_libro:
-    with st.spinner(" Buscando autor..."):
+if buscar_clicked and busqueda_a_realizar:
+    with st.spinner("Buscando autor..."):
         resultados = []
 
-        if fuente_busqueda == "Automática (Recomendada)":
-            
-            resultado = buscar_autor_local(titulo_libro)
+        if fuente_busqueda == "Automatica (Recomendada)":
+            resultado = buscar_autor_local(busqueda_a_realizar)
             if not resultado["encontrado"]:
-                resultado = buscar_autor_google_books(titulo_libro)
+                resultado = buscar_autor_google_books(busqueda_a_realizar)
             if not resultado["encontrado"]:
-                resultado = buscar_autor_open_library(titulo_libro)
+                resultado = buscar_autor_open_library(busqueda_a_realizar)
             resultados.append(resultado)
             
         elif fuente_busqueda == "Solo base local":
-            resultado = buscar_autor_local(titulo_libro)
+            resultado = buscar_autor_local(busqueda_a_realizar)
             resultados.append(resultado)
             
         elif fuente_busqueda == "Solo Google Books":
-            resultado = buscar_autor_google_books(titulo_libro)
+            resultado = buscar_autor_google_books(busqueda_a_realizar)
             resultados.append(resultado)
             
         elif fuente_busqueda == "Solo Open Library":
-            resultado = buscar_autor_open_library(titulo_libro)
+            resultado = buscar_autor_open_library(busqueda_a_realizar)
             resultados.append(resultado)
         
-       
+        
         busqueda_info = {
-            "titulo_buscado": titulo_libro,
+            "titulo_buscado": busqueda_a_realizar,
             "resultados": resultados,
             "fecha": pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S")
         }
@@ -219,9 +222,9 @@ if buscar_clicked and titulo_libro:
             st.session_state.historial = st.session_state.historial[:10]
 
 
-if buscar_clicked and titulo_libro:
+if buscar_clicked and busqueda_a_realizar:
     st.markdown("---")
-    st.subheader(" Resultados de la búsqueda")
+    st.subheader("Resultados de la busqueda")
     encontrado = False
     
     for resultado in st.session_state.historial[0]["resultados"]:
@@ -233,22 +236,22 @@ if buscar_clicked and titulo_libro:
                 col_res1, col_res2 = st.columns([3, 1])
                 
                 with col_res1:
-                    st.success(f" Libro encontrado:** {resultado['titulo_exacto']}")
-                    st.success(f" Autor:** {resultado['autor']}")
+                    st.success(f"Libro encontrado: {resultado['titulo_exacto']}")
+                    st.success(f"Autor: {resultado['autor']}")
                     
                     if resultado.get('año') and resultado['año'] != "Desconocido":
-                        st.info(f" Año de publicación:** {resultado['año']}")
+                        st.info(f"Año de publicacion: {resultado['año']}")
                     
-                    st.info(f" Fuente:** {resultado['fuente']}")
+                    st.info(f"Fuente: {resultado['fuente']}")
                 
                 with col_res2:
-                    st.metric("Estado", " Encontrado")
+                    st.metric("Estado", "Encontrado")
                 
                 st.markdown('</div>', unsafe_allow_html=True)
                 
                 
-                st.markdown("####  También podrías buscar:")
-                palabras_clave = titulo_libro.split()[:3]  
+                st.markdown("#### Tambien podrias buscar:")
+                palabras_clave = busqueda_a_realizar.split()[:3]  
                 sugerencias = [f'"{palabra}"' for palabra in palabras_clave if len(palabra) > 3]
                 
                 if sugerencias:
@@ -256,47 +259,46 @@ if buscar_clicked and titulo_libro:
                     for i, sugerencia in enumerate(sugerencias):
                         with cols_sug[i]:
                             if st.button(sugerencia, key=f"sug_{i}"):
-                                st.session_state.busqueda_principal = sugerencia.replace('"', '')
+                                st.session_state.busqueda_actual = sugerencia.replace('"', '')
                                 st.rerun()
                 
                 break  
     
     if not encontrado:
-        st.error(" No se pudo encontrar el autor para este libro")
+        st.error("No se pudo encontrar el autor para este libro")
         st.markdown("""
         <div style='background-color: #fff3cd; padding: 1rem; border-radius: 5px; border-left: 5px solid #ffc107;'>
-        <h4>💡 Sugerencias para mejorar la búsqueda:</h4>
+        <h4>Sugerencias para mejorar la busqueda:</h4>
         <ul>
-            <li>Verifica la ortografía del título</li>
-            <li>Intenta con el título completo y exacto</li>
-            <li>Usa la búsqueda automática para mejores resultados</li>
-            <li>Prueba con títulos en inglés si es una traducción</li>
+            <li>Verifica la ortografia del titulo</li>
+            <li>Intenta con el titulo completo y exacto</li>
+            <li>Usa la busqueda automatica para mejores resultados</li>
+            <li>Prueba con titulos en ingles si es una traduccion</li>
         </ul>
         </div>
         """, unsafe_allow_html=True)
 
-
 if st.session_state.historial:
     st.markdown("---")
-    st.subheader(" Historial de Búsquedas")
+    st.subheader("Historial de Busquedas")
     
-    for i, busqueda in enumerate(st.session_state.historial[:5]):  # Mostrar últimas 5
-        with st.expander(f"🔍 {busqueda['titulo_buscado']} - {busqueda['fecha']}", expanded=i==0):
+    for i, busqueda in enumerate(st.session_state.historial[:5]):
+        with st.expander(f"{busqueda['titulo_buscado']} - {busqueda['fecha']}", expanded=i==0):
             encontrado_en_esta = any(r.get('encontrado') for r in busqueda['resultados'])
             
             if encontrado_en_esta:
                 for resultado in busqueda['resultados']:
                     if resultado.get('encontrado'):
                         st.write(f"*Autor:* {resultado['autor']}")
-                        st.write(f"*Título exacto:* {resultado['titulo_exacto']}")
+                        st.write(f"*Titulo exacto:* {resultado['titulo_exacto']}")
                         st.write(f"*Fuente:* {resultado['fuente']}")
                         break
             else:
-                st.warning("No se encontró el autor en esta búsqueda")
+                st.warning("No se encontro el autor en esta busqueda")
 
 
 st.markdown("---")
-st.subheader(" Libros Populares en la Base de Datos")
+st.subheader("Libros Populares en la Base de Datos")
 libros_populares = list(LIBROS_BD.items())[:9]  
 
 cols_libros = st.columns(3)
@@ -307,8 +309,8 @@ for i, (libro, autor) in enumerate(libros_populares):
             st.write(f"{libro}")
             st.write(f"{autor}")
             
-            if st.button(" Buscar este", key=f"btn_{i}"):
-                st.session_state.busqueda_principal = libro
+            if st.button("Buscar este", key=f"btn_{i}"):
+                st.session_state.busqueda_actual = libro
                 st.rerun()
             
             st.markdown('</div>', unsafe_allow_html=True)
@@ -317,11 +319,7 @@ for i, (libro, autor) in enumerate(libros_populares):
 st.markdown("---")
 st.markdown("""
 <div style='text-align: center; color: #666;'>
-    <p><strong> Buscador de Autores</strong> - Encuentra autores de libros fácilmente</p>
+    <p><strong>Buscador de Autores</strong> - Encuentra autores de libros facilmente</p>
     <p><em>Combina base de datos local con APIs gratuitas de Google Books y Open Library</em></p>
 </div>
 """, unsafe_allow_html=True)
-
-
-
-
